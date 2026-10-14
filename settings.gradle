@@ -1,4 +1,65 @@
-pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
-dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
-rootProject.name = 'Xyverra'
-include ':app'
+name: Xyverra APK Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Locate Android Project
+        shell: bash
+        run: |
+          if [ -f settings.gradle ] || [ -f settings.gradle.kts ]; then
+            echo "PROJECT_DIR=." >> "$GITHUB_ENV"
+          elif [ -f xyverra/settings.gradle ] || [ -f xyverra/settings.gradle.kts ]; then
+            echo "PROJECT_DIR=xyverra" >> "$GITHUB_ENV"
+          else
+            echo "ERROR: settings.gradle / settings.gradle.kts tidak ditemukan."
+            echo "--- Isi root repo: ---"
+            ls -la
+            echo "--- Cari file settings: ---"
+            find . -name "settings.gradle*" -not -path "*/build/*"
+            exit 1
+          fi
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build Debug APK
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          if [ -f gradlew ]; then
+            chmod +x gradlew
+            ./gradlew --no-daemon assembleDebug
+          else
+            gradle --no-daemon assembleDebug
+          fi
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xyverra-v1.0-debug-apk
+          path: '**/build/outputs/apk/debug/*.apk'
+          if-no-files-found: error
