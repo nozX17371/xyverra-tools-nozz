@@ -6,45 +6,29 @@ push:
 branches:
 - main
 
-permissions:
-contents: read
-
 jobs:
 build:
-name: Build Android APK
 runs-on: ubuntu-latest
-
 steps:
-  - name: Checkout Source
-    uses: actions/checkout@v4
+- name: Checkout
+uses: actions/checkout@v4
 
-  - name: Check Project
-    run: |
-      echo "Checking Xyverra project..."
-      ls -la
-      if [ ! -f settings.gradle ] && [ ! -f settings.gradle.kts ]; then
-        echo "ERROR: settings.gradle or settings.gradle.kts not found."
-        exit 1
-      fi
-
-  - name: Setup JDK
+  - name: Setup Java
     uses: actions/setup-java@v4
     with:
       distribution: temurin
       java-version: '17'
 
-  - name: Build Debug APK
+  - name: Build APK
     run: |
-      if [ -f gradlew ]; then
-        chmod +x gradlew
-        ./gradlew --no-daemon assembleDebug
-      else
-        echo "ERROR: gradlew not found in project root."
+      if [ ! -f gradlew ]; then
+        echo "ERROR: gradlew tidak ditemukan di folder utama."
         exit 1
       fi
+      chmod +x gradlew
+      ./gradlew --no-daemon assembleDebug
 
   - name: Upload APK
-    if: success()
     uses: actions/upload-artifact@v4
     with:
       name: Xyverra-v1.0-debug-apk
