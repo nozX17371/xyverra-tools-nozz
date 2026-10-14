@@ -20,12 +20,16 @@ jobs:
       - name: Locate Android Project
         shell: bash
         run: |
-          if [ -f settings.gradle ]; then
+          if [ -f settings.gradle ] || [ -f settings.gradle.kts ]; then
             echo "PROJECT_DIR=." >> "$GITHUB_ENV"
-          elif [ -f xyverra/settings.gradle ]; then
+          elif [ -f xyverra/settings.gradle ] || [ -f xyverra/settings.gradle.kts ]; then
             echo "PROJECT_DIR=xyverra" >> "$GITHUB_ENV"
           else
-            echo "ERROR: settings.gradle tidak ditemukan."
+            echo "ERROR: settings.gradle / settings.gradle.kts tidak ditemukan."
+            echo "--- Isi root repo: ---"
+            ls -la
+            echo "--- Cari file settings: ---"
+            find . -name "settings.gradle*" -not -path "*/build/*"
             exit 1
           fi
 
@@ -35,6 +39,9 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -42,11 +49,23 @@ jobs:
 
       - name: Build Debug APK
         working-directory: ${{ env.PROJECT_DIR }}
-        run: gradle --no-daemon assembleDebug
+        run: |
+          if [ -f gradlew ]; then
+            chmod +x gradlew
+            ./gradlew --no-daemon assembleDebug
+          else
+            gradle --no-daemon assembleDebug
+          fi
+
+      - name: Find APK Files
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          echo "=== Mencari file APK di seluruh project ==="
+          find . -name "*.apk" -type f -not -path "*/\.*" || echo "Tidak ada APK ditemukan"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Xyverra-v1.0-debug-apk
-          path: '**/build/outputs/apk/debug/*.apk'
+          path: '**/build/outputs/apk/**/*.apk'
           if-no-files-found: error
